@@ -12,16 +12,22 @@ import (
 	"math/big"
 	"net"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
+
+var Serial int64
+
+func init() {
+	Serial, _ = strconv.ParseInt(time.Now().Format("20060102150405000"), 10, 64)
+}
 
 func SignWildcardDomain(c *gin.Context) {
 	domain := c.Param("domain")
 	ip := net.ParseIP(domain)
-
-	serial, _ := strconv.ParseInt(time.Now().Format("20060102150405000"), 10, 64)
+	atomic.AddInt64(&Serial, 1)
 	template := &x509.Certificate{
-		SerialNumber: big.NewInt(serial),
+		SerialNumber: big.NewInt(Serial),
 		Subject: pkix.Name{
 			CommonName: domain,
 		},
@@ -67,9 +73,8 @@ func SignWildcardDomain(c *gin.Context) {
 	})
 
 	c.JSON(200, gin.H{
-		"cert": certPEM.String(),
+		"cert": certPEM.String() + caPEM.String(),
 		"key":  keyPEM.String(),
-		"ca":   caPEM.String(),
 	})
 	return
 }
